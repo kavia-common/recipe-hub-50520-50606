@@ -13,6 +13,16 @@ def parse_csv_env(value: str) -> List[str]:
     return [v.strip() for v in value.split(",") if v.strip()]
 
 # App metadata with OpenAPI info and tags
+openapi_tags = [
+    {"name": "Health", "description": "Service health checks"},
+    {"name": "Diagnostics", "description": "Runtime configuration and diagnostics"},
+    {"name": "Auth", "description": "Authentication and user session"},
+    {"name": "Categories", "description": "Recipe categories"},
+    {"name": "Recipes", "description": "Browse and search recipes"},
+    {"name": "Favorites", "description": "Manage favorite recipes (protected)"},
+    {"name": "Notes", "description": "Manage personal notes (protected)"},
+]
+
 app = FastAPI(
     title="Recipe Hub Backend",
     description=(
@@ -20,6 +30,7 @@ app = FastAPI(
         "Provides endpoints for authentication, recipe management, favorites, and notes."
     ),
     version="0.1.0",
+    openapi_tags=openapi_tags,
 )
 
 # Load environment configuration (dotenv is already in requirements)
@@ -45,8 +56,18 @@ app.add_middleware(
 
 # Import and include routers after app instantiation to avoid circular imports
 from .auth import router as auth_router, get_current_user  # noqa: E402
+from .recipes import (  # noqa: E402
+    categories_router,
+    favorites_router,
+    notes_router,
+    recipes_router,
+)
 
 app.include_router(auth_router)
+app.include_router(categories_router)
+app.include_router(recipes_router)
+app.include_router(favorites_router)
+app.include_router(notes_router)
 
 # Simple config model to expose limited non-sensitive runtime info if needed
 class RuntimeConfig(BaseModel):
