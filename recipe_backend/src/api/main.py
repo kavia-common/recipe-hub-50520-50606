@@ -69,6 +69,19 @@ app.include_router(recipes_router)
 app.include_router(favorites_router)
 app.include_router(notes_router)
 
+# If a real DATABASE_URL is provided, ensure metadata is created to avoid missing table runtime errors.
+# This is a no-op for in-memory sqlite fallback used when DATABASE_URL is empty.
+try:
+    if DATABASE_URL:
+        from sqlalchemy import create_engine
+        from .models import Base  # import here to avoid circulars
+        engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+        Base.metadata.create_all(bind=engine)
+except Exception:
+    # Avoid app startup failure if database is temporarily unreachable.
+    # Diagnostics endpoint will still show database_configured flag.
+    pass
+
 # Simple config model to expose limited non-sensitive runtime info if needed
 class RuntimeConfig(BaseModel):
     """Non-sensitive runtime configuration values for diagnostics."""

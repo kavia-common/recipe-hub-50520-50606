@@ -141,7 +141,12 @@ notes_router = APIRouter(prefix="/notes", tags=["Notes"])
     description="Return all recipe categories.",
 )
 def list_categories(db: Session = Depends(get_db)) -> List[CategoryRead]:
-    """List all categories."""
+    """
+    List all categories.
+
+    Returns:
+    - List[CategoryRead]: All categories ordered alphabetically.
+    """
     categories = db.execute(select(Category).order_by(Category.name.asc())).scalars().all()
     return [CategoryRead.model_validate(c) for c in categories]
 
@@ -161,7 +166,16 @@ def list_recipes(
     limit: int = Query(50, ge=1, le=200, description="Maximum number of recipes to return"),
     offset: int = Query(0, ge=0, description="Pagination offset"),
 ) -> List[RecipeRead]:
-    """List public recipes with pagination."""
+    """
+    List public recipes with pagination.
+
+    Parameters:
+    - limit: max number of results (1..200).
+    - offset: pagination offset >= 0.
+
+    Returns:
+    - List[RecipeRead]: Most recent public recipes.
+    """
     stmt = (
         select(Recipe)
         .where(Recipe.is_public.is_(True))
@@ -183,7 +197,15 @@ def get_recipe(
     recipe_id: int = Path(..., ge=1, description="Recipe ID"),
     db: Session = Depends(get_db),
 ) -> RecipeDetailRead:
-    """Retrieve recipe details or 404 if not found or not public."""
+    """
+    Get detailed info for a specific public recipe.
+
+    Raises:
+    - 404 if the recipe does not exist or is not public.
+
+    Returns:
+    - RecipeDetailRead with categories and ingredients populated.
+    """
     recipe = db.get(Recipe, recipe_id)
     if recipe is None or not recipe.is_public:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
@@ -271,7 +293,15 @@ def list_my_favorites(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user()),
 ) -> List[RecipeRead]:
-    """List the current user's favorite recipes."""
+    """
+    List the current user's favorite recipes.
+
+    Security:
+    - Requires valid JWT via get_current_user().
+
+    Returns:
+    - List[RecipeRead] favorited by the current user.
+    """
     # Join favorites to recipes to return recipe info
     stmt = (
         select(Recipe)
@@ -300,7 +330,16 @@ def add_favorite(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user()),
 ) -> FavoriteRead:
-    """Add a recipe to the current user's favorites."""
+    """
+    Add a recipe to the current user's favorites.
+
+    Raises:
+    - 404 if the recipe does not exist.
+    - 409 if already favorited.
+
+    Returns:
+    - FavoriteRead representing the new favorite relation.
+    """
     recipe = db.get(Recipe, payload.recipe_id)
     if recipe is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
@@ -335,7 +374,12 @@ def remove_favorite(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user()),
 ) -> None:
-    """Remove a recipe from the current user's favorites."""
+    """
+    Remove a recipe from the current user's favorites.
+
+    Raises:
+    - 404 if the favorite relation does not exist.
+    """
     fav = db.execute(
         select(Favorite).where(Favorite.user_id == user.id, Favorite.recipe_id == recipe_id)
     ).scalar_one_or_none()
@@ -359,7 +403,12 @@ def list_my_notes(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user()),
 ) -> List[NoteRead]:
-    """List all notes by the current user."""
+    """
+    List all notes created by the current user.
+
+    Returns:
+    - List[NoteRead] ordered by most recently updated.
+    """
     notes = db.execute(
         select(Note).where(Note.user_id == user.id).order_by(Note.updated_at.desc())
     ).scalars().all()
@@ -382,7 +431,15 @@ def create_note(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user()),
 ) -> NoteRead:
-    """Create a new note for a recipe by the current user."""
+    """
+    Create a new note for a recipe by the current user.
+
+    Raises:
+    - 404 if the recipe does not exist.
+
+    Returns:
+    - NoteRead representing the created note.
+    """
     recipe = db.get(Recipe, payload.recipe_id)
     if recipe is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Recipe not found")
@@ -404,7 +461,12 @@ def get_note(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user()),
 ) -> NoteRead:
-    """Get a note by ID if it belongs to the current user."""
+    """
+    Retrieve a specific note belonging to the current user.
+
+    Raises:
+    - 404 if the note does not exist or is not owned by the user.
+    """
     note = db.get(Note, note_id)
     if note is None or note.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
@@ -424,7 +486,15 @@ def update_note(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user()),
 ) -> NoteRead:
-    """Update a note's content if it belongs to the current user."""
+    """
+    Update a note's content if it belongs to the current user.
+
+    Raises:
+    - 404 if the note does not exist or is not owned by the user.
+
+    Returns:
+    - NoteRead representing the updated note.
+    """
     note = db.get(Note, note_id)
     if note is None or note.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
@@ -446,7 +516,12 @@ def delete_note(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user()),
 ) -> None:
-    """Delete a note if it belongs to the current user."""
+    """
+    Delete a note if it belongs to the current user.
+
+    Raises:
+    - 404 if the note does not exist or is not owned by the user.
+    """
     note = db.get(Note, note_id)
     if note is None or note.user_id != user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
