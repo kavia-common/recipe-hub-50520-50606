@@ -1,7 +1,7 @@
 import os
 from typing import List
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -43,6 +43,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Import and include routers after app instantiation to avoid circular imports
+from .auth import router as auth_router, get_current_user  # noqa: E402
+
+app.include_router(auth_router)
+
 # Simple config model to expose limited non-sensitive runtime info if needed
 class RuntimeConfig(BaseModel):
     """Non-sensitive runtime configuration values for diagnostics."""
@@ -66,3 +71,10 @@ def get_runtime_config() -> RuntimeConfig:
         access_token_expire_minutes=ACCESS_TOKEN_EXPIRE_MINUTES,
         database_configured=bool(DATABASE_URL),
     )
+
+# Example protected endpoint to verify JWT functionality in docs
+@app.get("/auth/me", tags=["Auth"], summary="Get current user (protected)")
+def read_current_user(user=Depends(get_current_user)):
+    """Return the current authenticated user information."""
+    from .auth import UserRead  # local import to avoid circular typing issues
+    return UserRead.model_validate(user)

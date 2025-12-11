@@ -2,7 +2,7 @@
 Database and authentication dependencies for FastAPI routes.
 
 - get_db: Yields a SQLAlchemy session bound to the configured engine.
-- get_current_user: Placeholder authentication dependency to be implemented later.
+- get_current_user: JWT-based authentication dependency (delegates to auth.get_current_user).
 
 Configuration is sourced from environment variables (loaded via python-dotenv in app startup):
 - DATABASE_URL: SQLAlchemy URL for the database (e.g. postgresql+psycopg2://user:pass@host:5432/dbname)
@@ -73,10 +73,9 @@ def get_db() -> Generator[Session, None, None]:
 # PUBLIC_INTERFACE
 def get_current_user():
     """
-    Placeholder authentication dependency.
+    Authentication dependency that validates a JWT Bearer token and returns the current user.
 
-    This will be replaced with proper JWT-based authentication in future steps.
-    For now, it simply returns None to indicate no authenticated user context.
-    Routes requiring auth should depend on this and handle None accordingly.
+    This delegates to src.api.auth.get_current_user to keep a single source of truth.
     """
-    return None
+    from .auth import get_current_user as _get_current_user  # lazy import to avoid cycles
+    return _get_current_user
