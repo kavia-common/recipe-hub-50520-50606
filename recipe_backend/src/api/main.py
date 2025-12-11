@@ -44,7 +44,12 @@ JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 CORS_ALLOW_ORIGINS = parse_csv_env(os.getenv("CORS_ALLOW_ORIGINS", ""))
 
-# Configure CORS. If no explicit origins, allow all for development convenience.
+# Ensure localhost:3000 is allowed for local frontend development by default.
+default_dev_origin = "http://localhost:3000"
+if default_dev_origin not in CORS_ALLOW_ORIGINS:
+    CORS_ALLOW_ORIGINS.append(default_dev_origin)
+
+# Configure CORS. If no explicit origins set after defaults, allow all for development convenience.
 allow_all = not CORS_ALLOW_ORIGINS
 app.add_middleware(
     CORSMiddleware,
@@ -55,6 +60,7 @@ app.add_middleware(
 )
 
 # Import and include routers after app instantiation to avoid circular imports
+# Routers expose: /auth/*, /categories, /recipes, /favorites, /notes
 from .auth import router as auth_router, get_current_user  # noqa: E402
 from .recipes import (  # noqa: E402
     categories_router,
@@ -63,6 +69,7 @@ from .recipes import (  # noqa: E402
     recipes_router,
 )
 
+# Register routers with the application
 app.include_router(auth_router)
 app.include_router(categories_router)
 app.include_router(recipes_router)
